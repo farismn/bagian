@@ -4,12 +4,25 @@
    [com.stuartsierra.component :as c]
    [taoensso.timbre :as timbre :refer [log!]]))
 
+(defrecord TimbreAppender [appender-fn config appender]
+  c/Lifecycle
+  (start [this]
+    (assoc this :appender (appender-fn this)))
+  (stop [this]
+    (assoc this :appender nil)))
+
+(defn new-timbre-appender
+  ([appender-fn]
+   (new-timbre-appender appender-fn {}))
+  ([appender-fn config]
+   (map->TimbreAppender {:appender-fn appender-fn :config config})))
+
 (defn- collect-timbre-appenders
   [component]
   (into {}
         (keep (fn [[k v]]
-                (when-let [appenders (:appenders v)]
-                  [k appenders])))
+                (when-let [appender (:appender v)]
+                  [k appender])))
         component))
 
 (defrecord TimbreLogger [config settings previous-settings]
