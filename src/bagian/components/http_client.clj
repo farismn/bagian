@@ -1,15 +1,16 @@
 (ns bagian.components.http-client
   (:require
+   [bagian.edge.logger :refer [debug]]
    [clj-http.client :as http-client]))
 
-(defrecord HttpClient [config])
+(defrecord HttpClient [config logger])
 
 (defn new-http-client
   [config]
   (map->HttpClient {:config config}))
 
 (defn request
-  [{:keys [config]} http-method uri req]
+  [{:keys [config logger]} http-method uri req]
   (let [caller  (case http-method
                   :get     http-client/get
                   :head    http-client/head
@@ -21,4 +22,11 @@
                   :copy    http-client/copy
                   :move    http-client/move)
         new-uri (str (:host-uri config) uri)]
-    (caller new-uri req)))
+    (try
+      (let [_    (debug logger ::http-client {:request req})
+            resp (caller new-uri req)]
+        (debug logger ::http-client {:response resp})
+        resp)
+      (catch Throwable err
+        (debug logger ::http-client err)
+        (throw err)))))
